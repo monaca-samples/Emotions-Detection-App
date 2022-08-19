@@ -9,9 +9,9 @@ Technologies used:
 
 ## How to start
 1. Download the project.
-2. Run npm install in the directory.
-3. Run npm run dev to start the project.
-4. If the browser opens url 0.0.0.0:8080, change it to localhost:8080.
+2. Run `npm install` in the directory.
+3. Run `npm run dev` to start the project.
+4. If the browser opens url `0.0.0.0:8080`, change it to `localhost:8080`.
 
 ## Important files
 #### JS
