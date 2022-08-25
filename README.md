@@ -21,3 +21,11 @@ Technologies used:
 #### React
 - home.jsx - main page displaying camera and predicting emotions
 - settings.jsx - page for modifying app settings (FPS, vibrations, prediction interval, front/back camera)
+
+### Tutorial
+
+There is a tutorial available in Medium:
+
+English version: [Create an AI-powered emotions detection app with Monaca, React and Framework 7](https://medium.com/p/1280ba617103)
+
+Spanish version: [Crea una app de detección de emociones impulsada por IA con Monaca, React y Framework 7](https://medium.com/p/15af552ae685)
