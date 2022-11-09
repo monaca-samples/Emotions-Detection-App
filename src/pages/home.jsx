@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Page, Button, Navbar, NavRight } from "framework7-react";
 import * as faceapi from "@vladmandic/face-api/dist/face-api.esm.js";
 import placeholder from "../static/placeholder.png";
@@ -11,9 +11,9 @@ const HomePage = () => {
   const [detectedEmotion, setDetectedEmotion] = useState("Loading...");
   const [isPlay, setIsPlay] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
   const MODEL_URL = "models";
   const ANGRY_EMOTION = "ANGRY";
-  let cont = 0;
 
   /* Page init */
   const init = async () => {
@@ -27,6 +27,15 @@ const HomePage = () => {
       console.log(err);
     }
   };
+
+  // Stop prediction interval if there are too many errors
+  useEffect(() => {
+    if (errorCount >= 3) {
+      setIsPlay(false);
+      stopVideo();
+      setErrorCount(0);
+    }
+  }, [errorCount])
 
   /* Load FaceAPI models */
   const loadModel = async () => {
@@ -113,7 +122,6 @@ const HomePage = () => {
           console.log("brrr");
           navigator.vibrate(1000);
         }
-        cont = 0;
         setDetectedEmotion(
           singlePredictedEmotion.toString().replace(/,/g, "") + "%"
         );
@@ -122,14 +130,8 @@ const HomePage = () => {
       if (!isLoaded) {
         setDetectedEmotion("Ready");
       } else {
-        cont++;
+        setErrorCount(prevState => prevState+1); // get the previous state and increase by 1
         setDetectedEmotion("No face found");
-        // Stop prediction interval if there are too many errors
-        if (cont === 3) {
-          setIsPlay(false);
-          stopVideo();
-          cont = 0;
-        }
       }
     }
   };
