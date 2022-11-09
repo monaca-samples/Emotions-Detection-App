@@ -12,6 +12,8 @@ const HomePage = () => {
   const [isPlay, setIsPlay] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
+  const [predictionInterval, setPredictionInterval] = useState(0);
+  const [pcCameraStream, setPcCameraStream] = useState(null);
   const MODEL_URL = "models";
   const ANGRY_EMOTION = "ANGRY";
 
@@ -55,7 +57,8 @@ const HomePage = () => {
         await startCanvasCamera();
         predictEmotion(imageRef.current);
       } else {
-        window.stream = await getBrowserCamera();
+        const stream = await getBrowserCamera();
+        setPcCameraStream(stream);
         predictEmotion(videoRef.current);
       }
     } catch (err) {
@@ -80,11 +83,12 @@ const HomePage = () => {
 
   /* Prediction emotion every 5 seconds */
   const predictEmotion = (stream) => {
-    window.interval = setInterval(() => {
+    const interval = setInterval(() => {
       if (!stream) return;
       setDetectedEmotion("Predicting...");
       predicting(stream);
     }, (+localStorage.getItem("predictionInterval") || 5) * 1000);
+    setPredictionInterval(interval);
   };
 
   /* Prediction emotion form camera stream */
@@ -243,12 +247,12 @@ const HomePage = () => {
           }
         );
       } else {
-        window.stream.getTracks().forEach(function (track) {
+        pcCameraStream.getTracks().forEach(function (track) {
           track.stop();
         });
         imageRef.current.src = placeholder;
       }
-      clearInterval(window.interval);
+      clearInterval(predictionInterval);
       setDetectedEmotion("Ready");
     } catch (err) {
       console.log(err);
