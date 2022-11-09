@@ -30,7 +30,7 @@ const HomePage = () => {
     }
   };
 
-  // Stop prediction interval if there are too many errors
+  /* Stop prediction interval if there are too many errors */
   useEffect(() => {
     if (errorCount >= 3) {
       setIsPlay(false);
@@ -61,6 +61,31 @@ const HomePage = () => {
         setPcCameraStream(stream);
         predictEmotion(videoRef.current);
       }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+   /* Stop Phone/Browser camera */
+  const stopVideo = () => {
+    try {
+      if (hybridFunctions.isMobile()) {
+        window.plugin.CanvasCamera.stop(
+          (err) => {
+            console.log("Something went wrong!", err);
+          },
+          () => {
+            imageRef.current.src = placeholder;
+          }
+        );
+      } else {
+        pcCameraStream.getTracks().forEach(function (track) {
+          track.stop();
+        });
+        imageRef.current.src = placeholder;
+      }
+      clearInterval(predictionInterval);
+      setDetectedEmotion("Ready");
     } catch (err) {
       console.log(err);
     }
@@ -141,7 +166,7 @@ const HomePage = () => {
   };
 
   // ------------------------- Camera functions -------------------------
-  // Desktop
+  /* Desktop Camera */
   const getBrowserCamera = () => {
     return new Promise((resolve, reject) => {
       navigator.mediaDevices
@@ -164,7 +189,7 @@ const HomePage = () => {
     });
   };
 
-  // Mobile
+  /* Mobile Camera - Display image from phone camera */
   const readImageFile = (data) => {
     // set file protocol
     const protocol = "file://";
@@ -204,6 +229,7 @@ const HomePage = () => {
     );
   };
 
+  /* Mobile Camera - Start canvas camera */
   const startCanvasCamera = () => {
     return new Promise((resolve, reject) => {
       const options = {
@@ -235,30 +261,6 @@ const HomePage = () => {
     });
   };
 
-  const stopVideo = () => {
-    try {
-      if (hybridFunctions.isMobile()) {
-        window.plugin.CanvasCamera.stop(
-          (err) => {
-            console.log("Something went wrong!", err);
-          },
-          () => {
-            imageRef.current.src = placeholder;
-          }
-        );
-      } else {
-        pcCameraStream.getTracks().forEach(function (track) {
-          track.stop();
-        });
-        imageRef.current.src = placeholder;
-      }
-      clearInterval(predictionInterval);
-      setDetectedEmotion("Ready");
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
   return (
     <Page name='home' className='container-component' onPageInit={init}>
       <Navbar>
@@ -272,46 +274,20 @@ const HomePage = () => {
       <p className='sub-title'>How do you feel today?</p>
 
       {hybridFunctions.isMobile() ? (
-        <img
-          className='capturing-img'
-          ref={imageRef}
-          width='224'
-          height='224'
-          src={placeholder}
-        />
+        <img className='capturing-img' ref={imageRef} width='224' height='224' src={placeholder}/>
       ) : (
         <div>
-          <video
-            className='capturing-video'
-            ref={videoRef}
-            autoPlay
-            hidden={!isPlay}
-          ></video>
-          <img
-            className='capturing-img'
-            ref={imageRef}
-            width='224'
-            height='224'
-            src={placeholder}
-            hidden={isPlay}
-          />
+          <video className='capturing-video' ref={videoRef} autoPlay hidden={!isPlay}></video>
+          <img className='capturing-img' ref={imageRef} width='224' height='224' src={placeholder} hidden={isPlay}/>
         </div>
       )}
 
       <h2 className='recognized-title'>Recognised emotion:</h2>
       <p className='recognized-emotion'>{detectedEmotion}</p>
-      <Button
-        outline
-        color='black'
-        className='button'
-        disabled={!isLoaded}
-        onClick={start}
-      >
+      <Button outline color='black' className='button' disabled={!isLoaded} onClick={start}>
         {!isPlay ? "Play" : "Stop"}
       </Button>
-      <p className='footer'>
-        Created by <br /> Asial Corporation
-      </p>
+      <p className='footer'> Created by <br /> Asial Corporation</p>
     </Page>
   );
 };
