@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Page, Button, Navbar, NavRight } from "framework7-react";
 import * as faceapi from "@vladmandic/face-api/dist/face-api.esm.js";
 import placeholder from "../static/placeholder.png";
@@ -11,9 +11,11 @@ const HomePage = () => {
   const [detectedEmotion, setDetectedEmotion] = useState("Loading...");
   const [isPlay, setIsPlay] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
+  const [predictionInterval, setPredictionInterval] = useState(0);
+  const [pcCameraStream, setPcCameraStream] = useState(null);
   const MODEL_URL = "models";
   const ANGRY_EMOTION = "ANGRY";
-  let cont = 0;
 
   /* Page init */
   const init = async () => {
@@ -27,6 +29,15 @@ const HomePage = () => {
       console.log(err);
     }
   };
+
+  /* Stop prediction interval if there are too many errors */
+  useEffect(() => {
+    if (errorCount >= 3) {
+      setIsPlay(false);
+      stopVideo();
+      setErrorCount(0);
+    }
+  }, [errorCount])
 
   /* Load FaceAPI models */
   const loadModel = async () => {
@@ -46,9 +57,35 @@ const HomePage = () => {
         await startCanvasCamera();
         predictEmotion(imageRef.current);
       } else {
-        window.stream = await getBrowserCamera();
+        const stream = await getBrowserCamera();
+        setPcCameraStream(stream);
         predictEmotion(videoRef.current);
       }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+   /* Stop Phone/Browser camera */
+  const stopVideo = () => {
+    try {
+      if (hybridFunctions.isMobile()) {
+        window.plugin.CanvasCamera.stop(
+          (err) => {
+            console.log("Something went wrong!", err);
+          },
+          () => {
+            imageRef.current.src = placeholder;
+          }
+        );
+      } else {
+        pcCameraStream.getTracks().forEach(function (track) {
+          track.stop();
+        });
+        imageRef.current.src = placeholder;
+      }
+      clearInterval(predictionInterval);
+      setDetectedEmotion("Ready");
     } catch (err) {
       console.log(err);
     }
@@ -71,11 +108,12 @@ const HomePage = () => {
 
   /* Prediction emotion every 5 seconds */
   const predictEmotion = (stream) => {
-    window.interval = setInterval(() => {
+    const interval = setInterval(() => {
       if (!stream) return;
       setDetectedEmotion("Predicting...");
       predicting(stream);
     }, (+localStorage.getItem("predictionInterval") || 5) * 1000);
+    setPredictionInterval(interval);
   };
 
   /* Prediction emotion form camera stream */
@@ -113,7 +151,6 @@ const HomePage = () => {
           console.log("brrr");
           navigator.vibrate(1000);
         }
-        cont = 0;
         setDetectedEmotion(
           singlePredictedEmotion.toString().replace(/,/g, "") + "%"
         );
@@ -122,20 +159,14 @@ const HomePage = () => {
       if (!isLoaded) {
         setDetectedEmotion("Ready");
       } else {
-        cont++;
+        setErrorCount(prevState => prevState+1); // get the previous state and increase by 1
         setDetectedEmotion("No face found");
-        // Stop prediction interval if there are too many errors
-        if (cont === 3) {
-          setIsPlay(false);
-          stopVideo();
-          cont = 0;
-        }
       }
     }
   };
 
   // ------------------------- Camera functions -------------------------
-  // Desktop
+  /* Desktop Camera */
   const getBrowserCamera = () => {
     return new Promise((resolve, reject) => {
       navigator.mediaDevices
@@ -158,7 +189,7 @@ const HomePage = () => {
     });
   };
 
-  // Mobile
+  /* Mobile Camera - Display image from phone camera */
   const readImageFile = (data) => {
     // set file protocol
     const protocol = "file://";
@@ -198,6 +229,7 @@ const HomePage = () => {
     );
   };
 
+  /* Mobile Camera - Start canvas camera */
   const startCanvasCamera = () => {
     return new Promise((resolve, reject) => {
       const options = {
@@ -229,30 +261,6 @@ const HomePage = () => {
     });
   };
 
-  const stopVideo = () => {
-    try {
-      if (hybridFunctions.isMobile()) {
-        window.plugin.CanvasCamera.stop(
-          (err) => {
-            console.log("Something went wrong!", err);
-          },
-          () => {
-            imageRef.current.src = placeholder;
-          }
-        );
-      } else {
-        window.stream.getTracks().forEach(function (track) {
-          track.stop();
-        });
-        imageRef.current.src = placeholder;
-      }
-      clearInterval(window.interval);
-      setDetectedEmotion("Ready");
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
   return (
     <Page name='home' className='container-component' onPageInit={init}>
       <Navbar>
@@ -266,46 +274,20 @@ const HomePage = () => {
       <p className='sub-title'>How do you feel today?</p>
 
       {hybridFunctions.isMobile() ? (
-        <img
-          className='capturing-img'
-          ref={imageRef}
-          width='224'
-          height='224'
-          src={placeholder}
-        />
+        <img className='capturing-img' ref={imageRef} width='224' height='224' src={placeholder}/>
       ) : (
         <div>
-          <video
-            className='capturing-video'
-            ref={videoRef}
-            autoPlay
-            hidden={!isPlay}
-          ></video>
-          <img
-            className='capturing-img'
-            ref={imageRef}
-            width='224'
-            height='224'
-            src={placeholder}
-            hidden={isPlay}
-          />
+          <video className='capturing-video' ref={videoRef} autoPlay hidden={!isPlay}></video>
+          <img className='capturing-img' ref={imageRef} width='224' height='224' src={placeholder} hidden={isPlay}/>
         </div>
       )}
 
       <h2 className='recognized-title'>Recognised emotion:</h2>
       <p className='recognized-emotion'>{detectedEmotion}</p>
-      <Button
-        outline
-        color='black'
-        className='button'
-        disabled={!isLoaded}
-        onClick={start}
-      >
+      <Button outline color='black' className='button' disabled={!isLoaded} onClick={start}>
         {!isPlay ? "Play" : "Stop"}
       </Button>
-      <p className='footer'>
-        Created by <br /> Asial Corporation
-      </p>
+      <p className='footer'> Created by <br /> Asial Corporation</p>
     </Page>
   );
 };
